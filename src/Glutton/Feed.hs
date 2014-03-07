@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell, TypeFamilies, DeriveDataTypeable #-}
-module Hfeedreader.Feed where
+module Glutton.Feed where
 
 import Control.Exception
-import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.Reader (ask)
+import Control.Monad.State (put)
 import Data.Acid
 import Data.Maybe
 import Data.SafeCopy
@@ -13,10 +13,9 @@ import Text.Feed.Import
 import Text.Feed.Query hiding (feedItems)
 import Text.Feed.Types
 
-import Hfeedreader.ItemStrategy
-import Hfeedreader.Feed.Types
+import Glutton.ItemStrategy
+import Glutton.Feed.Types
   
--- http://rss.slashdot.org/Slashdot/slashdot
 getFeed :: String -> IO (Either String Feed)
 getFeed url = (simpleHTTP (getRequest url)
               >>= getResponseBody
@@ -80,7 +79,7 @@ queryFeedState :: Query FeedState FeedState
 queryFeedState = ask
 
 openFeedState :: String -> IO (AcidState FeedState)
-openFeedState url = openLocalStateFrom "~/.hfeedreader/" (newFeedState url)
+openFeedState url = openLocalStateFrom "~/.glutton/" (newFeedState url) -- TODO Don't use "~", it doesn't work.
 
 $(deriveSafeCopy 0 'base ''ItemState_v0)
 $(deriveSafeCopy 0 'base ''FeedState_v0)

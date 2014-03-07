@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Hfeedreader.Feed.Types where
+module Glutton.Feed.Types where
 
 import Data.Typeable
 
