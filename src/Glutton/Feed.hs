@@ -1,7 +1,8 @@
 {-# LANGUAGE TemplateHaskell, TypeFamilies, DeriveDataTypeable #-}
 module Glutton.Feed where
 
-import Control.Exception
+import Control.Exception (try, SomeException(..), ErrorCall(..))
+import Control.Error
 import Control.Monad.Reader (ask)
 import Control.Monad.State (put)
 import Data.Acid
@@ -16,15 +17,13 @@ import Text.Feed.Types
 import Glutton.ItemStrategy
 import Glutton.Feed.Types
   
-getFeed :: String -> IO (Either String Feed)
-getFeed url = (simpleHTTP (getRequest url)
-              >>= getResponseBody
-              >>= return . note "Failed to parse feed" . parseFeedString)
-              `catch` \e -> return . Left $ show (e :: IOException)
+getFeed :: String -> IO (Either SomeException Feed)
+getFeed url = runEitherT $
+              EitherT (try (simpleHTTP (getRequest url)))
+              >>= syncIO . getResponseBody
+              >>= hoistEither . note (SomeException (ErrorCall "Failed to parse feed")) . parseFeedString
 
--- | Tag the 'Nothing' value of a 'Maybe'
-note :: a -> Maybe b -> Either a b
-note a = maybe (Left a) Right
+--TODO make a custom exception type instead of using ErrorCall              
 
 mergeFeed :: ItemStrategy -> Feed -> FeedState -> FeedState
 mergeFeed s f fs = fs { feedTitle = getFeedTitle f
@@ -85,8 +84,8 @@ $(deriveSafeCopy 0 'base ''ItemState_v0)
 $(deriveSafeCopy 0 'base ''FeedState_v0)
 $(makeAcidic ''FeedState_v0 ['writeFeedState, 'queryFeedState])
 
--- | Updates a feed subscription and maybe returns an error String
-updateSub :: ItemStrategy -> AcidState FeedState -> IO (Maybe String)
+-- | Updates a feed subscription and maybe returns an exception if the update fails
+updateSub :: ItemStrategy -> AcidState FeedState -> IO (Maybe SomeException)
 updateSub s a = do fs <- query a QueryFeedState
                    f <- getFeed (feedUrl fs)
                    case f of
