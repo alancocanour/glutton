@@ -16,8 +16,8 @@ cabal-version:       >=1.10
 
 executable glutton
   main-is:             Glutton/Main.hs
-  other-modules:       Glutton.Feed
-                     , Glutton.Feed.Types
+  other-modules:       Glutton.Subscription
+                     , Glutton.Subscription.Types
   -- other-extensions:    
   build-depends:       base == 4.6.*
                      , feed == 0.3.*

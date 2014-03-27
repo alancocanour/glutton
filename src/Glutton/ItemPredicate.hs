@@ -2,7 +2,7 @@ module Glutton.ItemPredicate where
 
 import Text.Feed.Types (Item(..))
 
-import Glutton.Feed.Types (ItemState(..))
+import Glutton.Subscription.Types (ItemState(..))
 
 -- | A function that decides whether we want to store and display an item
 type ItemPredicate = Maybe Item -- ^ The item as is currently exists in the feed

@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Glutton.Feed.Types where
+module Glutton.Subscription.Types where
 
 import Data.Typeable
 
---TODO rename FeedState to Subscription
-data FeedState =
-  FeedState {
+-- | A Subscription is the state of a Feed as it is stored on our local machine
+data Subscription =
+  Subscription {
     feedTitle :: String,
     feedAuthor :: Maybe String,
     feedHome :: Maybe String,
@@ -22,8 +22,8 @@ data FeedState =
     feedUrl :: String
     } deriving (Typeable)
 
-newFeedState :: String -> FeedState
-newFeedState url = FeedState {
+newSubscription :: String -> Subscription
+newSubscription url = Subscription {
   feedTitle = url,
   feedAuthor = Nothing,
   feedHome = Nothing,

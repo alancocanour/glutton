@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, TypeFamilies, DeriveDataTypeable #-}
-module Glutton.Feed where
+module Glutton.Subscription where
 
 import Control.Exception (try, SomeException(..), ErrorCall(..))
 import Control.Error
@@ -15,7 +15,7 @@ import Text.Feed.Query hiding (feedItems)
 import Text.Feed.Types
 
 import Glutton.ItemPredicate
-import Glutton.Feed.Types
+import Glutton.Subscription.Types
   
 getFeed :: String -> IO (Either SomeException Feed)
 getFeed url = runEitherT $
@@ -25,7 +25,7 @@ getFeed url = runEitherT $
 
 --TODO make a custom exception type instead of using ErrorCall              
 
-mergeFeed :: ItemPredicate -> Feed -> FeedState -> FeedState
+mergeFeed :: ItemPredicate -> Feed -> Subscription -> Subscription
 mergeFeed s f fs = fs { feedTitle = getFeedTitle f
                       , feedAuthor = getFeedAuthor f
                       , feedHome = getFeedHome f
@@ -71,27 +71,27 @@ mergeItem (Just i) (Just is) =
 
 getId = snd . fromMaybe (error "Item lacks an id") . getItemId
                                
-writeFeedState :: FeedState -> Update FeedState ()
-writeFeedState = put
+writeSubscription :: Subscription -> Update Subscription ()
+writeSubscription = put
 
-queryFeedState :: Query FeedState FeedState
-queryFeedState = ask
+querySubscription :: Query Subscription Subscription
+querySubscription = ask
 
-openFeedState :: String -> IO (AcidState FeedState)
-openFeedState url = openLocalStateFrom "~/.glutton/" (newFeedState url) -- TODO Don't use "~", it doesn't work.
+openSubscription :: String -> IO (AcidState Subscription)
+openSubscription url = openLocalStateFrom "~/.glutton/" (newSubscription url) -- TODO Don't use "~", it doesn't work.
 
 $(deriveSafeCopy 0 'base ''ItemState)
-$(deriveSafeCopy 0 'base ''FeedState)
-$(makeAcidic ''FeedState ['writeFeedState, 'queryFeedState])
+$(deriveSafeCopy 0 'base ''Subscription)
+$(makeAcidic ''Subscription ['writeSubscription, 'querySubscription])
 
 -- | Updates a feed subscription and maybe returns an exception if the update fails
-updateSub :: ItemPredicate -> AcidState FeedState -> IO (Maybe SomeException)
-updateSub s a = do fs <- query a QueryFeedState
-                   f <- getFeed (feedUrl fs)
-                   case f of
-                     Left e -> return $ Just e
-                     Right feed -> do update a (WriteFeedState (mergeFeed s feed fs))
-                                      return Nothing
+updateSubscription :: ItemPredicate -> AcidState Subscription -> IO (Maybe SomeException)
+updateSubscription s a = do fs <- query a QuerySubscription
+                            f <- getFeed (feedUrl fs)
+                            case f of
+                              Left e -> return $ Just e
+                              Right feed -> do update a (WriteSubscription (mergeFeed s feed fs))
+                                               return Nothing
 
-getSub :: AcidState FeedState -> IO (FeedState)
-getSub a = query a QueryFeedState
+getSubscription :: AcidState Subscription -> IO Subscription
+getSubscription a = query a QuerySubscription
