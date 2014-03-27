@@ -80,9 +80,9 @@ queryFeedState = ask
 openFeedState :: String -> IO (AcidState FeedState)
 openFeedState url = openLocalStateFrom "~/.glutton/" (newFeedState url) -- TODO Don't use "~", it doesn't work.
 
-$(deriveSafeCopy 0 'base ''ItemState_v0)
-$(deriveSafeCopy 0 'base ''FeedState_v0)
-$(makeAcidic ''FeedState_v0 ['writeFeedState, 'queryFeedState])
+$(deriveSafeCopy 0 'base ''ItemState)
+$(deriveSafeCopy 0 'base ''FeedState)
+$(makeAcidic ''FeedState ['writeFeedState, 'queryFeedState])
 
 -- | Updates a feed subscription and maybe returns an exception if the update fails
 updateSub :: ItemPredicate -> AcidState FeedState -> IO (Maybe SomeException)

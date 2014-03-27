@@ -4,8 +4,8 @@ module Glutton.Feed.Types where
 import Data.Typeable
 
 --TODO rename FeedState to Subscription
-data FeedState_v0 =
-  FeedState_v0 {
+data FeedState =
+  FeedState {
     feedTitle :: String,
     feedAuthor :: Maybe String,
     feedHome :: Maybe String,
@@ -18,12 +18,12 @@ data FeedState_v0 =
     feedLanguage :: Maybe String,
     feedCategories :: [(String, Maybe String)],
     feedGenerator :: Maybe String,
-    feedItems :: [ItemState_v0],
+    feedItems :: [ItemState],
     feedUrl :: String
     } deriving (Typeable)
 
 newFeedState :: String -> FeedState
-newFeedState url = FeedState_v0 {
+newFeedState url = FeedState {
   feedTitle = url,
   feedAuthor = Nothing,
   feedHome = Nothing,
@@ -39,11 +39,9 @@ newFeedState url = FeedState_v0 {
   feedItems = [],
   feedUrl = url
   }
-  
-type ItemState = ItemState_v0
 
-data ItemState_v0 =
-  ItemState_v0 {
+data ItemState =
+  ItemState {
     itemTitle :: Maybe String,
     itemLink :: Maybe String,
     --itemPublishDate :: ParseTime t => Maybe (Maybe t),
@@ -63,7 +61,7 @@ data ItemState_v0 =
 
 newItemState :: String -> ItemState
 newItemState id =
-  ItemState_v0 { 
+  ItemState { 
     itemTitle = Nothing,
     itemLink = Nothing,
     itemPublishDateString = Nothing,
@@ -79,7 +77,3 @@ newItemState id =
     itemDescription = Nothing,
     itemRead = False
     }
-  
-type FeedState = FeedState_v0
-
-
