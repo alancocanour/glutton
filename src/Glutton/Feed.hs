@@ -14,7 +14,7 @@ import Text.Feed.Import
 import Text.Feed.Query hiding (feedItems)
 import Text.Feed.Types
 
-import Glutton.ItemStrategy
+import Glutton.ItemPredicate
 import Glutton.Feed.Types
   
 getFeed :: String -> IO (Either SomeException Feed)
@@ -25,7 +25,7 @@ getFeed url = runEitherT $
 
 --TODO make a custom exception type instead of using ErrorCall              
 
-mergeFeed :: ItemStrategy -> Feed -> FeedState -> FeedState
+mergeFeed :: ItemPredicate -> Feed -> FeedState -> FeedState
 mergeFeed s f fs = fs { feedTitle = getFeedTitle f
                       , feedAuthor = getFeedAuthor f
                       , feedHome = getFeedHome f
@@ -41,7 +41,7 @@ mergeFeed s f fs = fs { feedTitle = getFeedTitle f
                       , feedItems = mergeItems s (getFeedItems f) (feedItems fs)                  
                       }
 
-mergeItems :: ItemStrategy -> [Item] -> [ItemState] -> [ItemState]
+mergeItems :: ItemPredicate -> [Item] -> [ItemState] -> [ItemState]
 mergeItems f i is =
   let iM =  M.fromList $ map (\a -> (getId a,  (Just a, Nothing))) i
       isM = M.fromList $ map (\a -> (itemId a, (Nothing, Just a))) is
@@ -85,7 +85,7 @@ $(deriveSafeCopy 0 'base ''FeedState_v0)
 $(makeAcidic ''FeedState_v0 ['writeFeedState, 'queryFeedState])
 
 -- | Updates a feed subscription and maybe returns an exception if the update fails
-updateSub :: ItemStrategy -> AcidState FeedState -> IO (Maybe SomeException)
+updateSub :: ItemPredicate -> AcidState FeedState -> IO (Maybe SomeException)
 updateSub s a = do fs <- query a QueryFeedState
                    f <- getFeed (feedUrl fs)
                    case f of
