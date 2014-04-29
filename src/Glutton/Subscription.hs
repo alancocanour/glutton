@@ -1,5 +1,9 @@
 {-# LANGUAGE TemplateHaskell, TypeFamilies, DeriveDataTypeable #-}
-module Glutton.Subscription where
+module Glutton.Subscription (
+  getSubscription,
+  openSubscription,
+  updateSubscription
+  ) where
 
 import Control.Exception (try, SomeException(..), ErrorCall(..))
 import Control.Error
@@ -79,11 +83,13 @@ writeSubscription = put
 querySubscription :: Query Subscription Subscription
 querySubscription = ask
 
+-- | Opens the AcidState container for a subscription.
 openSubscription :: String -> IO (AcidState Subscription)
 openSubscription url = do home <- gluttonHome
                           let subscriptionFolder = home </> (urlEncode url)
                           openLocalStateFrom home (newSubscription url)
 
+-- | The FilePath where subscriptions are stored
 gluttonHome :: IO FilePath
 gluttonHome = do gluttonHomeEnv <- lookupEnv "GLUTTONHOME"
                  homeEnv <- lookupEnv "HOME"
@@ -104,5 +110,6 @@ updateSubscription s a = do fs <- query a QuerySubscription
                               Right feed -> do update a (WriteSubscription (mergeFeed s feed fs))
                                                return Nothing
 
+-- | Gets a Subscription out of the AcidState container
 getSubscription :: AcidState Subscription -> IO Subscription
 getSubscription a = query a QuerySubscription
