@@ -10,6 +10,8 @@ import Data.Maybe
 import Data.SafeCopy
 import Network.HTTP
 import qualified Data.Map.Lazy as M 
+import System.Environment (lookupEnv)
+import System.FilePath ((</>))
 import Text.Feed.Import
 import Text.Feed.Query hiding (feedItems)
 import Text.Feed.Types
@@ -78,7 +80,16 @@ querySubscription :: Query Subscription Subscription
 querySubscription = ask
 
 openSubscription :: String -> IO (AcidState Subscription)
-openSubscription url = openLocalStateFrom "~/.glutton/" (newSubscription url) -- TODO Don't use "~", it doesn't work.
+openSubscription url = do home <- gluttonHome
+                          let subscriptionFolder = home </> (urlEncode url)
+                          openLocalStateFrom home (newSubscription url)
+
+gluttonHome :: IO FilePath
+gluttonHome = do gluttonHomeEnv <- lookupEnv "GLUTTONHOME"
+                 homeEnv <- lookupEnv "HOME"
+                 let home = head $ catMaybes [gluttonHomeEnv, homeEnv, Just "."]
+                     gluttonHome = home </> ".glutton"
+                 return gluttonHome
 
 $(deriveSafeCopy 0 'base ''ItemState)
 $(deriveSafeCopy 0 'base ''Subscription)
