@@ -1,18 +1,21 @@
 {-# LANGUAGE TemplateHaskell, TypeFamilies, DeriveDataTypeable #-}
 module Glutton.Subscription (
-  getSubscription,
-  openSubscription,
-  updateSubscription
+  open,
+  close,
+  get,
+  update,
+  SubscriptionHandle
   ) where
 
 import Control.Exception (try, SomeException(..), ErrorCall(..))
 import Control.Error
 import Control.Monad.Reader (ask)
 import Control.Monad.State (put)
-import Data.Acid
+import Data.Acid hiding (update)
+import qualified Data.Acid as A
 import Data.Maybe
 import Data.SafeCopy
-import Network.HTTP
+import Network.HTTP (simpleHTTP, getResponseBody, getRequest, urlEncode)
 import qualified Data.Map.Lazy as M 
 import System.Environment (lookupEnv)
 import System.FilePath ((</>))
@@ -83,11 +86,18 @@ writeSubscription = put
 querySubscription :: Query Subscription Subscription
 querySubscription = ask
 
--- | Opens the AcidState container for a subscription.
-openSubscription :: String -> IO (AcidState Subscription)
-openSubscription url = do home <- gluttonHome
-                          let subscriptionFolder = home </> (urlEncode url)
-                          openLocalStateFrom home (newSubscription url)
+newtype SubscriptionHandle = SH (AcidState Subscription)
+
+-- | Opens a SubscriptionHandle for the specified URL.
+open :: String -> IO SubscriptionHandle
+open url = do home <- gluttonHome
+              let subscriptionFolder = home </> (urlEncode url)
+              s <- openLocalStateFrom home (newSubscription url)
+              return $ SH s
+
+-- | Closes the SubscriptionHandle
+close :: SubscriptionHandle -> IO ()
+close (SH a) = closeAcidState a
 
 -- | The FilePath where subscriptions are stored
 gluttonHome :: IO FilePath
@@ -102,14 +112,14 @@ $(deriveSafeCopy 0 'base ''Subscription)
 $(makeAcidic ''Subscription ['writeSubscription, 'querySubscription])
 
 -- | Updates a feed subscription and maybe returns an exception if the update fails
-updateSubscription :: ItemPredicate -> AcidState Subscription -> IO (Maybe SomeException)
-updateSubscription s a = do fs <- query a QuerySubscription
-                            f <- getFeed (feedUrl fs)
-                            case f of
-                              Left e -> return $ Just e
-                              Right feed -> do update a (WriteSubscription (mergeFeed s feed fs))
-                                               return Nothing
+update :: ItemPredicate -> SubscriptionHandle -> IO (Maybe SomeException)
+update s (SH a) = do fs <- query a QuerySubscription
+                     f <- getFeed (feedUrl fs)
+                     case f of
+                       Left e -> return $ Just e
+                       Right feed -> do A.update a (WriteSubscription (mergeFeed s feed fs))
+                                        return Nothing
 
--- | Gets a Subscription out of the AcidState container
-getSubscription :: AcidState Subscription -> IO Subscription
-getSubscription a = query a QuerySubscription
+-- | Gets a Subscription from a SubscriptionHandle
+get :: SubscriptionHandle -> IO Subscription
+get (SH a) = query a QuerySubscription
