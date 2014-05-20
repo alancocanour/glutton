@@ -17,12 +17,12 @@ import Data.Maybe
 import Data.SafeCopy
 import Network.HTTP (simpleHTTP, getResponseBody, getRequest, urlEncode)
 import qualified Data.Map.Lazy as M 
-import System.Environment (lookupEnv)
 import System.FilePath ((</>))
 import Text.Feed.Import
 import Text.Feed.Query hiding (feedItems)
 import Text.Feed.Types
 
+import Glutton.Config (gluttonHome)
 import Glutton.ItemPredicate
 import Glutton.Subscription.Types
   
@@ -98,14 +98,6 @@ open url = do home <- gluttonHome
 -- | Closes the SubscriptionHandle
 close :: SubscriptionHandle -> IO ()
 close (SH a) = closeAcidState a
-
--- | The FilePath where subscriptions are stored
-gluttonHome :: IO FilePath
-gluttonHome = do gluttonHomeEnv <- lookupEnv "GLUTTONHOME"
-                 homeEnv <- lookupEnv "HOME"
-                 let home = head $ catMaybes [gluttonHomeEnv, homeEnv, Just "."]
-                     gluttonHome = home </> ".glutton"
-                 return gluttonHome
 
 $(deriveSafeCopy 0 'base ''ItemState)
 $(deriveSafeCopy 0 'base ''Subscription)

@@ -18,6 +18,7 @@ executable glutton
   main-is:             Glutton/Main.hs
   other-modules:       Glutton.Subscription
                      , Glutton.Subscription.Types
+                     , Glutton.Gui
   -- other-extensions:    
   build-depends:       base == 4.6.*
                      , feed == 0.3.*
