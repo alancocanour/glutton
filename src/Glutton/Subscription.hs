@@ -8,7 +8,6 @@ module Glutton.Subscription (
   ) where
 
 import Control.Exception (try, SomeException(..), ErrorCall(..))
-import Control.Error
 import Control.Monad.Reader (ask)
 import Control.Monad.State (put)
 import Data.Acid hiding (update)
@@ -27,12 +26,11 @@ import Glutton.ItemPredicate
 import Glutton.Subscription.Types
   
 getFeed :: String -> IO (Either SomeException Feed)
-getFeed url = runEitherT $
-              EitherT (try (simpleHTTP (getRequest url)))
-              >>= syncIO . getResponseBody
-              >>= hoistEither . note (SomeException (ErrorCall "Failed to parse feed")) . parseFeedString
-
---TODO make a custom exception type instead of using ErrorCall              
+getFeed url = do feedString <- try $ simpleHTTP (getRequest url) >>= getResponseBody
+                 return $ feedString >>= parseFeed
+  where parseError = (Left $ SomeException $ ErrorCall "Failed to parse feed")
+        parseFeed = maybe parseError Right . parseFeedString
+--TODO make a custom exception type instead of using ErrorCall
 
 mergeFeed :: ItemPredicate -> Feed -> Subscription -> Subscription
 mergeFeed s f fs = fs { feedTitle = getFeedTitle f
