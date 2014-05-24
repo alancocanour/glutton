@@ -1,6 +1,6 @@
 module Glutton.Subscription.Updater
        ( Updater
-       , Update
+       , Update(..)
        , startUpdater
        , killUpdater
        , getPort
@@ -39,16 +39,16 @@ startUpdater i fs = do
                             return (f, h)
                   
 updateThread :: Int -> TVar [(String, SubscriptionHandle)] -> SendPort Update -> IO ()
-updateThread i handlesT port = do
+updateThread i handlesT p = do
   handles <- atomically $ readTVar handlesT
-  forM_ handles $ uncurry $ sendUpdate port
+  forM_ handles $ uncurry $ sendUpdate p
   threadDelay $ i * 1000000
-  updateThread i handlesT port
+  updateThread i handlesT p
 
 sendUpdate :: SendPort Update -> String -> SubscriptionHandle -> IO ()
-sendUpdate port url handle = do
+sendUpdate p url_ handle = do
   err <- update inFeed handle
-  send port $ Update url err
+  send p $ Update url_ err
   
 killUpdater :: Updater -> IO ()
 killUpdater = killThread . thread
@@ -60,7 +60,7 @@ addSubscription :: Updater -> String -> IO ()
 addSubscription u f = do
   handle <- open f
   atomically $ modifyTVar' (feeds u) ((f, handle) :)
-  forkIO $ sendUpdate (port u) f handle
+  _ <- forkIO $ sendUpdate (port u) f handle
   return ()
           
 removeSubscription :: Updater -> String -> IO ()

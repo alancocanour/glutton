@@ -1,7 +1,12 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell, TypeFamilies #-}
 module Glutton.Subscription.Types where
 
+import Control.Monad.Reader (ask)
+import Control.Monad.State (put)
+import Data.Acid
+import Data.SafeCopy
 import Data.Typeable
+
 
 -- | A Subscription is the state of a Feed as it is stored on our local machine
 data Subscription =
@@ -60,7 +65,7 @@ data ItemState =
     }
 
 newItemState :: String -> ItemState
-newItemState id =
+newItemState _id =
   ItemState { 
     itemTitle = Nothing,
     itemLink = Nothing,
@@ -70,10 +75,20 @@ newItemState id =
     itemCommentLink = Nothing,
     itemEnclosure = Nothing,
     itemFeedLink = Nothing,
-    itemId = id,
+    itemId = _id,
     itemCategories = [],
     itemRights = Nothing,
     itemSummary = Nothing,
     itemDescription = Nothing,
     itemRead = False
     }
+
+writeSubscription :: Subscription -> Update Subscription ()
+writeSubscription = put
+
+querySubscription :: Query Subscription Subscription
+querySubscription = ask
+
+$(deriveSafeCopy 0 'base ''ItemState) --Move these to Subscription.Types to fix orphan instances
+$(deriveSafeCopy 0 'base ''Subscription)
+$(makeAcidic ''Subscription ['writeSubscription, 'querySubscription])

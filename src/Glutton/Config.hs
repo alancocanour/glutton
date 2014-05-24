@@ -26,6 +26,4 @@ gluttonHome :: IO FilePath
 gluttonHome = do gluttonHomeEnv <- lookupEnv "GLUTTONHOME"
                  homeEnv <- lookupEnv "HOME"
                  let home = fromJust $ gluttonHomeEnv <|> homeEnv <|> Just "."
-                     gluttonHome = home </> ".glutton"
-                 return gluttonHome
-
+                 return $ home </> ".glutton"
