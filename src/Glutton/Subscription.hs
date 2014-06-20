@@ -3,7 +3,8 @@ module Glutton.Subscription (
   close,
   get,
   update,
-  SubscriptionHandle
+  SubscriptionHandle,
+  module Glutton.Subscription.Types
   ) where
 
 import Control.Exception (try, SomeException(..), ErrorCall(..))
@@ -41,7 +42,8 @@ mergeFeed s f fs = fs { feedTitle = getFeedTitle f
                       , feedLanguage = getFeedLanguage f
                       , feedCategories = getFeedCategories f
                       , feedGenerator = getFeedGenerator f
-                      , feedItems = mergeItems s (getFeedItems f) (feedItems fs)                  
+                      , feedItems = mergeItems s (getFeedItems f) (feedItems fs)
+                      , feedLastError = Nothing
                       }
 
 mergeItems :: ItemPredicate -> [Item] -> [ItemState] -> [ItemState]
@@ -91,13 +93,12 @@ close :: SubscriptionHandle -> IO ()
 close (SH a) = closeAcidState a
 
 -- | Updates a feed subscription and maybe returns an exception if the update fails
-update :: ItemPredicate -> SubscriptionHandle -> IO (Maybe SomeException)
+update :: ItemPredicate -> SubscriptionHandle -> IO ()
 update s (SH a) = do fs <- query a QuerySubscription
                      f <- getFeed (feedUrl fs)
                      case f of
-                       Left e -> return $ Just e
-                       Right feed -> do A.update a (WriteSubscription (mergeFeed s feed fs))
-                                        return Nothing
+                       Left e -> A.update a (WriteSubscription fs {feedLastError = Just (show e)})
+                       Right feed -> A.update a (WriteSubscription (mergeFeed s feed fs))
 
 -- | Gets a Subscription from a SubscriptionHandle
 get :: SubscriptionHandle -> IO Subscription

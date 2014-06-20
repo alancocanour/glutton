@@ -24,7 +24,8 @@ data Subscription =
     feedCategories :: [(String, Maybe String)],
     feedGenerator :: Maybe String,
     feedItems :: [ItemState],
-    feedUrl :: String
+    feedUrl :: String,
+    feedLastError :: Maybe String
     } deriving (Typeable)
 
 newSubscription :: String -> Subscription
@@ -42,7 +43,8 @@ newSubscription url = Subscription {
   feedCategories = [],
   feedGenerator = Nothing,
   feedItems = [],
-  feedUrl = url
+  feedUrl = url,
+  feedLastError = Nothing
   }
 
 data ItemState =
