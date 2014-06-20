@@ -13,8 +13,15 @@ inFeed :: ItemPredicate
 inFeed (Just _) _ = True
 inFeed _ _ = False
 
-read :: ItemPredicate
-read _ (Just i) | itemRead i = True
-read _ _ = False
+isRead :: ItemPredicate
+isRead _ (Just i) | itemRead i = True
+isRead _ _ = False
 
--- TODO provide more strategies and maybe combinators to combine them with
+andP :: ItemPredicate -> ItemPredicate -> ItemPredicate
+f `andP` g = \i is -> f i is && g i is
+
+orP :: ItemPredicate -> ItemPredicate -> ItemPredicate
+f `orP` g = \i is -> f i is || g i is
+
+notP :: ItemPredicate -> ItemPredicate
+notP f = \i is -> not $ f i is
