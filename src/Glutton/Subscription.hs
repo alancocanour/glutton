@@ -11,6 +11,7 @@ import Control.Exception (try, SomeException(..), ErrorCall(..))
 import Data.Acid hiding (update)
 import qualified Data.Acid as A
 import Data.Maybe
+import Data.Monoid
 import Network.HTTP (simpleHTTP, getResponseBody, getRequest, urlEncode)
 import qualified Data.Map.Lazy as M 
 import System.FilePath ((</>))
@@ -77,7 +78,9 @@ mergeItem (Just i) (Just is) =
 mergeItem Nothing Nothing = error "Can't merge item Nothing with item Nothing"
 
 getId :: Item -> String
-getId = snd . fromMaybe (error "Item lacks an id") . getItemId
+getId i = let id_ = First $ fmap snd $ getItemId i
+              title = First $ getItemTitle i
+          in fromMaybe (error "Item lacks an id and title") $ getFirst $ id_ <> title
 
 newtype SubscriptionHandle = SH (AcidState Subscription)
 
