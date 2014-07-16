@@ -1,8 +1,8 @@
 module Glutton.Subscription.Updater
        ( Updater
-       , Update(..)
        , startUpdater
        , killUpdater
+       , getFeeds
        , getPort
        , addSubscription
        , removeSubscription
@@ -11,7 +11,6 @@ module Glutton.Subscription.Updater
 import Control.Concurrent
 import Control.Concurrent.Chan.Split
 import Control.Concurrent.STM
-import Control.Exception (SomeException)
 import Control.Monad
 import Data.Functor
   
@@ -19,13 +18,9 @@ import Glutton.Subscription
 import Glutton.ItemPredicate
 
 data Updater = Updater { feeds :: TVar [(String, SubscriptionHandle)]
-                       , port :: SendPort Update
+                       , port :: SendPort [SubscriptionHandle]
                        , thread :: ThreadId
                        }
-
-data Update = Update { url :: String
-                     , error :: Maybe SomeException
-                     }
 
 startUpdater :: Int -- ^ time between updates in seconds
              -> [String] -- ^ Feed URLs to update
@@ -38,35 +33,41 @@ startUpdater i fs = do
     where openHandle f = do h <- open f
                             return (f, h)
                   
-updateThread :: Int -> TVar [(String, SubscriptionHandle)] -> SendPort Update -> IO ()
+updateThread :: Int -> TVar [(String, SubscriptionHandle)] -> SendPort [SubscriptionHandle] -> IO ()
 updateThread i handlesT p = do
-  handles <- atomically $ readTVar handlesT
-  forM_ handles $ uncurry $ sendUpdate p
+  handles <- map snd <$> readTVarIO handlesT
+  forM_ handles $ \h -> do
+    update (inFeed `orP` notP isRead) h
+    sendUpdate' p handlesT
   threadDelay $ i * 1000000
   updateThread i handlesT p
 
-sendUpdate :: SendPort Update -> String -> SubscriptionHandle -> IO ()
-sendUpdate p url_ handle = do
-  err <- update inFeed handle
-  send p $ Update url_ err
-  
+sendUpdate :: Updater -> IO ()
+sendUpdate u = sendUpdate' (port u) (feeds u)
+
+sendUpdate' :: SendPort [SubscriptionHandle] -> TVar [(String, SubscriptionHandle)] -> IO ()
+sendUpdate' p t = send p =<< map snd <$> readTVarIO t
+
 killUpdater :: Updater -> IO ()
 killUpdater = killThread . thread
 
-getPort :: Updater -> IO (ReceivePort Update)
+getFeeds :: Updater -> IO [SubscriptionHandle]
+getFeeds u = map snd <$> (readTVarIO $ feeds u)
+              
+getPort :: Updater -> IO (ReceivePort [SubscriptionHandle])
 getPort = listen . port
 
 addSubscription :: Updater -> String -> IO ()
 addSubscription u f = do
   handle <- open f
   atomically $ modifyTVar' (feeds u) ((f, handle) :)
-  _ <- forkIO $ sendUpdate (port u) f handle
-  return ()
+  sendUpdate u
           
 removeSubscription :: Updater -> String -> IO ()
 removeSubscription u f = do
   handle <- atomically $ do
     Just handle <- lookup f <$> readTVar (feeds u)
-    modifyTVar' (feeds u) $ filter $ not . (== f) . fst
+    modifyTVar' (feeds u) $ filter $ (/= f) . fst
     return handle
   close handle
+  sendUpdate u
