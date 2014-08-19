@@ -52,7 +52,7 @@ killUpdater :: Updater -> IO ()
 killUpdater = killThread . thread
 
 getFeeds :: Updater -> IO [SubscriptionHandle]
-getFeeds u = map snd <$> (readTVarIO $ feeds u)
+getFeeds u = map snd <$> readTVarIO (feeds u)
               
 getPort :: Updater -> IO (ReceivePort [SubscriptionHandle])
 getPort = listen . port

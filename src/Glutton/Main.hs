@@ -1,6 +1,10 @@
 module Main where
 
-import Paths_glutton (version)
+import Glutton.Subscription.Updater
+import Glutton.Gui
+import Glutton.Config
 
 main :: IO ()
-main = print version
+main = do config <- getConfig
+          updater <- startUpdater (refreshTime config) (feeds config)
+          startGui (port config) updater

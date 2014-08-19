@@ -3,6 +3,8 @@ module Glutton.Subscription (
   close,
   get,
   update,
+  modify,
+  modifyAndRead,
   SubscriptionHandle,
   module Glutton.Subscription.Types
   ) where
@@ -106,3 +108,15 @@ update s (SH a) = do fs <- query a QuerySubscription
 -- | Gets a Subscription from a SubscriptionHandle
 get :: SubscriptionHandle -> IO Subscription
 get (SH a) = query a QuerySubscription
+
+-- | Modifies a Subscription associated with a SubscriptionHandle and extracts some information from it at the same time
+modifyAndRead :: SubscriptionHandle -> (Subscription -> (Subscription, b)) -> IO b
+modifyAndRead (SH a) f = do
+  fs <- query a QuerySubscription
+  let (fs', b) = f fs
+  A.update a (WriteSubscription fs')
+  return b
+
+-- | Modifies a Subscription associated with a SubscriptionHandle
+modify :: SubscriptionHandle -> (Subscription -> Subscription) -> IO ()
+modify sh f = modifyAndRead sh (\a -> (f a, ()))

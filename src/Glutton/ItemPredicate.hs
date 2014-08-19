@@ -24,4 +24,4 @@ orP :: ItemPredicate -> ItemPredicate -> ItemPredicate
 f `orP` g = \i is -> f i is || g i is
 
 notP :: ItemPredicate -> ItemPredicate
-notP f = \i is -> not $ f i is
+notP f i is = not $ f i is
