@@ -63,10 +63,19 @@ mkSidebar activeFeed (n, c, h) = do
 mkActiveFeed :: Element -> SubscriptionHandle -> UI ()
 mkActiveFeed activeFeed handle = do
   sub <- liftIO $ S.get handle
+  markAllReadButton <- span #. "button" # set text "Mark All Read"
+  header <- div #. "activeFeedTitle" #+
+            [ span # set text (feedTitle sub)
+            , element markAllReadButton ]
   _ <- element activeFeed # set children []
-  _ <- element activeFeed #+ (div #. "activeFeedTitle" # set text (feedTitle sub)
+  _ <- element activeFeed #+ (element header
                               : map (mkItem handle) (feedItems sub) )
-  return ()
+
+  on click markAllReadButton $ const $ do
+    liftIO $ modify handle $ \s ->
+      let items' = map (\i -> i {itemRead = True}) $ feedItems s
+      in s { feedItems = items'}
+    mkActiveFeed activeFeed handle
 
 mkItem :: SubscriptionHandle -> ItemState -> UI Element
 mkItem sh i = do
