@@ -26,7 +26,7 @@ data Subscription =
     feedItems :: [ItemState],
     feedUrl :: String,
     feedLastError :: Maybe String
-    } deriving (Typeable)
+    } deriving (Typeable, Show)
 
 newSubscription :: String -> Subscription
 newSubscription url = Subscription {
@@ -64,7 +64,7 @@ data ItemState =
     itemSummary :: Maybe String,
     itemDescription :: Maybe String,
     itemRead :: Bool
-    }
+    } deriving (Show)
 
 newItemState :: String -> ItemState
 newItemState _id =
