@@ -97,17 +97,21 @@ open url = do home <- gluttonHome
 close :: SubscriptionHandle -> IO ()
 close (SH a) = closeAcidState a
 
--- | Updates a feed subscription and maybe returns an exception if the update fails
+-- | Updates a feed subscription
 update :: ItemPredicate -> SubscriptionHandle -> IO ()
-update s (SH a) = do fs <- query a QuerySubscription
-                     f <- getFeed (feedUrl fs)
-                     case f of
-                       Left e -> A.update a (WriteSubscription fs {feedLastError = Just (show e)})
-                       Right feed -> A.update a (WriteSubscription (mergeFeed s feed fs))
+update p sh = do s <- get sh
+                 f <- getFeed (feedUrl s)
+                 case f of
+                   Left e -> put sh s {feedLastError = Just (show e)}
+                   Right feed -> put sh (mergeFeed p feed s)
 
 -- | Gets a Subscription from a SubscriptionHandle
 get :: SubscriptionHandle -> IO Subscription
 get (SH a) = query a QuerySubscription
+
+-- | Writes a Subscription to a SubscriptionHandle
+put :: SubscriptionHandle -> Subscription -> IO ()
+put (SH a) s = A.update a (WriteSubscription s)
 
 -- | Modifies a Subscription associated with a SubscriptionHandle and extracts some information from it at the same time
 modifyAndRead :: SubscriptionHandle -> (Subscription -> (Subscription, b)) -> IO b
