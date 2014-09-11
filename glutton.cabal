@@ -15,13 +15,18 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable glutton
-  main-is:             Glutton/Main.hs
-  other-modules:       Glutton.Subscription
+  main-is:             Main.hs
+  build-depends:       base >=4.6 && <4.8
+                     , glutton
+  default-language:    Haskell2010
+
+library
+  exposed-modules:     Glutton.Subscription
                      , Glutton.Subscription.Types
                      , Glutton.Subscription.Updater
+                     , Glutton.Config
                      , Glutton.Gui
                      , Glutton.Gui.Css
-  -- other-extensions:    
   build-depends:       base >=4.6 && <4.8
                      , feed == 0.3.*
                      , HTTP == 4000.2.*
