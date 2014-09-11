@@ -55,8 +55,9 @@ setup ucs updater window = do
 
 mkSidebar :: Element -> UnreadCount -> UI Element
 mkSidebar activeFeed (n, c, h) = do
+  let countString = if c > 0 then show c else ""
   feedSelector <- div #+ [ span # set text n
-                         , span # set text (show c) #. "unreadCount" ]
+                         , span # set text countString #. "unreadCount" ]
   on click feedSelector $ const $ mkActiveFeed activeFeed h
   return feedSelector
 
