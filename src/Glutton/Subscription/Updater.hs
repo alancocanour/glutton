@@ -49,7 +49,10 @@ sendUpdate' :: SendPort [SubscriptionHandle] -> TVar [(String, SubscriptionHandl
 sendUpdate' p t = send p =<< map snd <$> readTVarIO t
 
 killUpdater :: Updater -> IO ()
-killUpdater = killThread . thread
+killUpdater u = do
+  killThread $ thread u
+  handles <- map snd <$> readTVarIO (feeds u)
+  mapM_ close handles
 
 getFeeds :: Updater -> IO [SubscriptionHandle]
 getFeeds u = map snd <$> readTVarIO (feeds u)

@@ -8,3 +8,4 @@ main :: IO ()
 main = do config <- getConfig
           updater <- startUpdater (refreshTime config) (feeds config)
           startGui (port config) updater
+          killUpdater updater

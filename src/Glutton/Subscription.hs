@@ -95,7 +95,8 @@ open url = do home <- gluttonHome
 
 -- | Closes the SubscriptionHandle
 close :: SubscriptionHandle -> IO ()
-close (SH a) = closeAcidState a
+close (SH a) = do createCheckpoint a
+                  closeAcidState a
 
 -- | Updates a feed subscription
 update :: ItemPredicate -> SubscriptionHandle -> IO ()
