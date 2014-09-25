@@ -9,13 +9,17 @@ module Glutton.Subscription (
   module Glutton.Subscription.Types
   ) where
 
+import Control.Concurrent
 import Control.Exception (try, SomeException(..), ErrorCall(..))
+import Control.Monad
 import Data.Acid hiding (update)
-import qualified Data.Acid as A
 import Data.Maybe
 import Data.Monoid
+import Data.Acid.Local
 import Network.HTTP (simpleHTTP, getResponseBody, getRequest, urlEncode)
 import qualified Data.Map.Lazy as M 
+import qualified Data.Acid as A
+import System.Directory
 import System.FilePath ((</>))
 import Text.Feed.Import
 import Text.Feed.Query hiding (feedItems)
@@ -86,17 +90,21 @@ getId i = let id_ = First $ fmap snd $ getItemId i
 
 newtype SubscriptionHandle = SH (AcidState Subscription)
 
+-- | The folder where a subscription is saved on disk
+subscriptionFolder :: String -> IO FilePath
+subscriptionFolder url = do
+  home <- gluttonHome
+  return $ home </> urlEncode url
+
 -- | Opens a SubscriptionHandle for the specified URL.
 open :: String -> IO SubscriptionHandle
-open url = do home <- gluttonHome
-              let subscriptionFolder = home </> urlEncode url
-              s <- openLocalStateFrom subscriptionFolder $ newSubscription url
+open url = do folder <- subscriptionFolder url
+              s <- openLocalStateFrom folder $ newSubscription url
               return $ SH s
 
 -- | Closes the SubscriptionHandle
 close :: SubscriptionHandle -> IO ()
-close (SH a) = do createCheckpoint a
-                  closeAcidState a
+close (SH a) = createCheckpointAndClose a
 
 -- | Updates a feed subscription
 update :: ItemPredicate -> SubscriptionHandle -> IO ()
@@ -112,7 +120,12 @@ get (SH a) = query a QuerySubscription
 
 -- | Writes a Subscription to a SubscriptionHandle
 put :: SubscriptionHandle -> Subscription -> IO ()
-put (SH a) s = A.update a (WriteSubscription s)
+put (SH a) s = do A.update a (WriteSubscription s)
+                  void $ forkIO $ do
+                    createCheckpoint a
+                    createArchive a
+                    url <- fmap feedUrl $ get $ SH a
+                    removeDirectoryRecursive =<< fmap (</> "Archive") (subscriptionFolder url)
 
 -- | Modifies a Subscription associated with a SubscriptionHandle and extracts some information from it at the same time
 modifyAndRead :: SubscriptionHandle -> (Subscription -> (Subscription, b)) -> IO b
