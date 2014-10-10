@@ -37,7 +37,7 @@ updateThread :: Int -> TVar [(String, SubscriptionHandle)] -> SendPort [Subscrip
 updateThread i handlesT p = do
   handles <- map snd <$> readTVarIO handlesT
   forM_ handles $ \h -> do
-    update (inFeed `orP` notP isRead) h
+    fetchSubscription (inFeed `orP` notP isRead) h
     sendUpdate' p handlesT
   threadDelay $ i * 1000000
   updateThread i handlesT p
