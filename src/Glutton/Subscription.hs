@@ -88,7 +88,7 @@ getId i = let id_ = First $ fmap snd $ getItemId i
               title = First $ getItemTitle i
           in fromMaybe (error "Item lacks an id and title") $ getFirst $ id_ <> title
 
-newtype SubscriptionHandle = SH (AcidState Subscription)
+data SubscriptionHandle = SH (AcidState Subscription) (IO ())
 
 -- | The folder where a subscription is saved on disk
 subscriptionFolder :: String -> IO FilePath
@@ -97,14 +97,18 @@ subscriptionFolder url = do
   return $ home </> urlEncode url
 
 -- | Opens a SubscriptionHandle for the specified URL.
-open :: String -> IO SubscriptionHandle
-open url = do folder <- subscriptionFolder url
-              s <- openLocalStateFrom folder $ newSubscription url
-              return $ SH s
+open
+  :: String -- ^ The URL of the RSS/ATOM feed
+  -> IO () -- ^ IO action to perform whenever the subscription is modified
+  -> IO SubscriptionHandle
+open url f = do
+  folder <- subscriptionFolder url
+  s <- openLocalStateFrom folder $ newSubscription url
+  return $ SH s f
 
 -- | Closes the SubscriptionHandle
 close :: SubscriptionHandle -> IO ()
-close (SH a) = createCheckpointAndClose a
+close (SH a _) = createCheckpointAndClose a
 
 -- | Retrieves subscription contents from remote server and updates the SubscriptionHandle
 fetchSubscription :: ItemPredicate -> SubscriptionHandle -> IO ()
@@ -117,16 +121,15 @@ fetchSubscription p sh = do
 
 -- | Gets a Subscription from a SubscriptionHandle
 get :: SubscriptionHandle -> IO Subscription
-get (SH a) = query a QuerySubscription
-
---TODO find a way to make SubscriptionHandle a FRP Behavior
+get (SH a _) = query a QuerySubscription
 
 -- | Modifies a Subscription associated with a SubscriptionHandle and extracts some information from it at the same time
 modifyAndRead :: SubscriptionHandle -> (Subscription -> (Subscription, b)) -> IO b
-modifyAndRead sh@(SH a) f = do
+modifyAndRead sh@(SH a sendUpdate) f = do
   s <- get sh
   let (s', b) = f s
   A.update a (WriteSubscription s')
+  sendUpdate
   return b
 
 -- | Modifies a Subscription associated with a SubscriptionHandle
@@ -135,8 +138,8 @@ modify sh f = modifyAndRead sh (\a -> (f a, ()))
 
 -- | Removes old acid state checkpoints and event logs
 cleanup :: SubscriptionHandle -> IO ()
-cleanup (SH a) = void $ forkIO $ do
+cleanup sh@(SH a _) = void $ forkIO $ do
   createCheckpoint a
   createArchive a
-  url <- fmap feedUrl $ get $ SH a
+  url <- fmap feedUrl $ get sh
   removeDirectoryRecursive =<< fmap (</> "Archive") (subscriptionFolder url)

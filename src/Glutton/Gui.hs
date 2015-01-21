@@ -1,28 +1,24 @@
 module Glutton.Gui
-       ( startGui ) where
+       ( createGui ) where
 
-import Control.Concurrent
-import Control.Concurrent.Chan.Split
+import Control.Monad
 import Data.Maybe
 import Data.Monoid
-import Graphics.UI.Threepenny as UI hiding (map)
+import Graphics.UI.Threepenny as UI hiding (map, p, sub, header, link)
 import Prelude hiding (div, span)
 
 import Glutton.Gui.Css (stylesheet)
 import Glutton.Subscription as S
 import Glutton.Subscription.Updater
 
-startGui :: Int -> Updater -> IO ()
-startGui port u = do
-  (ucE, trigger) <- newEvent
-  rPort <- getPort u
-  initialSubs <- getFeeds u
-  ucB <- stepper [] ucE
-  trigger =<< mapM unreadCount initialSubs
-  t <- forkIO $ listenThread trigger rPort
-    
-  UI.startGUI defaultConfig { tpPort = Just port, tpStatic = Nothing } $ setup ucB u
-  killThread t
+createGui
+  :: IO ( Int -> Updater -> IO ()
+        , [SubscriptionHandle] -> IO ()) -- ^ A function to start the GUI given the port to run on and an Updater and a function to update the GUI when the subscriptions change
+createGui = do
+  (unreadCountE, trigger) <- newEvent
+  unreadCountB <- stepper [] unreadCountE
+  return (\p u -> UI.startGUI defaultConfig { tpPort = Just p, tpStatic = Nothing } $ setup unreadCountB u
+         ,trigger <=< mapM unreadCount)
 
 type UnreadCount = (String,Int,SubscriptionHandle)
   
@@ -31,27 +27,25 @@ unreadCount h = do
   s <- S.get h
   return (feedTitle s, length $ filter (not . itemRead) $ feedItems s, h)
 
-listenThread :: Handler [UnreadCount] -> ReceivePort [SubscriptionHandle] -> IO ()
-listenThread trigger port = do
-  handles <- receive port
-  trigger =<<  mapM unreadCount handles
-  listenThread trigger port
-
 setup :: Behavior [UnreadCount] -> Updater -> Window -> UI ()
-setup ucs updater window = do
+setup ucs updater window = do --TODO use the Updater to enable adding/removing subscriptions from the GUI
   activeFeed <- div # set id_ "activeFeed"
 
-  let sidebarContents = fmap (mapM $ mkSidebar activeFeed) ucs
-  contents <- currentValue sidebarContents
-  contents' <- contents
-  sidebar <- div # set id_ "sidebar" #+ map element contents'
-  onChanges sidebarContents $ \c -> do
-    c' <- c
-    element sidebar # set children c'
+  let sidebarContents = fmap (map $ mkSidebar activeFeed) ucs
+  sidebar <- div
+             # set id_ "sidebar"
+  sinkChildren sidebarContents (element sidebar)
 
   _ <- getHead window #+ [mkElement "style" # set text stylesheet]
   _ <- getBody window #+ map element [sidebar, activeFeed]
   return ()
+
+sinkChildren :: Behavior [UI Element] -> UI Element -> UI ()
+sinkChildren b e = do
+  _ <- (e #+) =<< currentValue b
+  onChanges b $ \elements -> do
+    elements' <- sequence elements
+    e # set children elements'
 
 mkSidebar :: Element -> UnreadCount -> UI Element
 mkSidebar activeFeed (n, c, h) = do
