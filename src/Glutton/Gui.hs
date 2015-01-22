@@ -50,17 +50,18 @@ sinkChildren b e = do
 mkSidebar :: Element -> UnreadCount -> UI Element
 mkSidebar activeFeed (n, c, h) = do
   let countString = if c > 0 then show c else ""
-  feedSelector <- div #+ [ span # set text n
-                         , span # set text countString #. "unreadCount" ]
+  feedSelector <- div #. "feedSelector"
+                  #+ [ span # set text n
+                     , span # set text countString #. "unreadCount" ]
   on click feedSelector $ const $ mkActiveFeed activeFeed h
   return feedSelector
 
 mkActiveFeed :: Element -> SubscriptionHandle -> UI ()
 mkActiveFeed activeFeed handle = do
   sub <- liftIO $ S.get handle
-  markAllReadButton <- span #. "button" # set text "Mark All Read"
-  header <- div #. "activeFeedTitle" #+
-            [ span # set text (feedTitle sub)
+  markAllReadButton <- span #. "button" # set text "♺ Mark All Read"
+  header <- div #+
+            [ span #. "activeFeedTitle" # set text (feedTitle sub)
             , element markAllReadButton ]
   _ <- element activeFeed # set children []
   _ <- element activeFeed #+ (element header
@@ -74,7 +75,7 @@ mkActiveFeed activeFeed handle = do
 
 mkItem :: SubscriptionHandle -> ItemState -> UI Element
 mkItem sh i = do
-  markRead <- span # set text (check $ itemRead i)
+  markRead <- span #. "clickable" # set text (check $ itemRead i)
   on click markRead $ const $ do
     newReadState <- liftIO $ modifyAndRead sh $ \s ->
       let items' = flip map (feedItems s) $ \item ->
@@ -88,7 +89,8 @@ mkItem sh i = do
   link <- a # set (attr "target") "_blank"
             # set (attr "href") (fromMaybe "" $ itemLink i)
             # set text (fromMaybe "" $ itemTitle i)
-  div #+ [ element markRead
-         , element link ]
+  div #. "feedItem"
+    #+ [ element markRead
+       , element link ]
   where check True  = "☑"
         check False = "☐"
