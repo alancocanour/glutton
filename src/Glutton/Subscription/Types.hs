@@ -1,3 +1,7 @@
+{- |
+Module      : Glutton.Subscription.Types
+Description : data types and instances for @Subscription@ and @ItemState@
+-}
 {-# LANGUAGE DeriveDataTypeable, TemplateHaskell, TypeFamilies #-}
 module Glutton.Subscription.Types where
 

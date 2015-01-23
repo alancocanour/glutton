@@ -1,3 +1,7 @@
+{- |
+Module      : Glutton.Subscription
+Description : retrieving, merging, and storing subscriptions/feeds
+-}
 module Glutton.Subscription (
   open,
   close,
@@ -28,7 +32,11 @@ import Text.Feed.Types
 import Glutton.Config (gluttonHome)
 import Glutton.ItemPredicate
 import Glutton.Subscription.Types
-  
+
+-- | A wrapper around a 'Subscription' that allows safe modifications
+data SubscriptionHandle = SH (AcidState Subscription) (IO ())
+
+-- | Retrieves a 'Feed' from the remote server
 getFeed :: String -> IO (Either SomeException Feed)
 getFeed url = do feedString <- try $ simpleHTTP (getRequest url) >>= getResponseBody
                  return $ feedString >>= parseFeed
@@ -36,6 +44,9 @@ getFeed url = do feedString <- try $ simpleHTTP (getRequest url) >>= getResponse
         parseFeed = maybe parseError Right . parseFeedString
 --TODO make a custom exception type instead of using ErrorCall
 
+-- | Merges the 'Feed' from a remote server into the 'Subscription' on
+-- the local disk keeping only the items for which the 'ItemPredicate'
+-- is 'True'
 mergeFeed :: ItemPredicate -> Feed -> Subscription -> Subscription
 mergeFeed s f fs = fs { feedTitle = getFeedTitle f
                       , feedAuthor = getFeedAuthor f
@@ -53,6 +64,8 @@ mergeFeed s f fs = fs { feedTitle = getFeedTitle f
                       , feedLastError = Nothing
                       }
 
+-- | Merge 'Item' in the remote 'Feed' into the existing 'ItemState's
+-- and keeps 'ItemState's for with the 'ItemPredicate' is 'True'
 mergeItems :: ItemPredicate -> [Item] -> [ItemState] -> [ItemState]
 mergeItems f i is =
   let iM =  M.fromList $ map (\a -> (getId a,  (Just a, Nothing))) i
@@ -88,15 +101,13 @@ getId i = let id_ = First $ fmap snd $ getItemId i
               title = First $ getItemTitle i
           in fromMaybe (error "Item lacks an id and title") $ getFirst $ id_ <> title
 
-data SubscriptionHandle = SH (AcidState Subscription) (IO ())
-
 -- | The folder where a subscription is saved on disk
 subscriptionFolder :: String -> IO FilePath
 subscriptionFolder url = do
   home <- gluttonHome
   return $ home </> urlEncode url
 
--- | Opens a SubscriptionHandle for the specified URL.
+-- | Opens a 'SubscriptionHandle' for the specified URL.
 open
   :: String -- ^ The URL of the RSS/ATOM feed
   -> IO () -- ^ IO action to perform whenever the subscription is modified
@@ -106,11 +117,11 @@ open url f = do
   s <- openLocalStateFrom folder $ newSubscription url
   return $ SH s f
 
--- | Closes the SubscriptionHandle
+-- | Closes the 'SubscriptionHandle'
 close :: SubscriptionHandle -> IO ()
 close (SH a _) = createCheckpointAndClose a
 
--- | Retrieves subscription contents from remote server and updates the SubscriptionHandle
+-- | Retrieves subscription contents from remote server and updates the 'SubscriptionHandle'
 fetchSubscription :: ItemPredicate -> SubscriptionHandle -> IO ()
 fetchSubscription p sh = do
   f <- getFeed =<< fmap feedUrl (get sh)
@@ -119,11 +130,11 @@ fetchSubscription p sh = do
     Right feed -> modify sh (mergeFeed p feed)
   cleanup sh
 
--- | Gets a Subscription from a SubscriptionHandle
+-- | Gets a 'Subscription' from a 'SubscriptionHandle'
 get :: SubscriptionHandle -> IO Subscription
 get (SH a _) = query a QuerySubscription
 
--- | Modifies a Subscription associated with a SubscriptionHandle and extracts some information from it at the same time
+-- | Modifies a 'Subscription' associated with a 'SubscriptionHandle' and extracts some information from it at the same time
 modifyAndRead :: SubscriptionHandle -> (Subscription -> (Subscription, b)) -> IO b
 modifyAndRead sh@(SH a sendUpdate) f = do
   s <- get sh
@@ -132,7 +143,7 @@ modifyAndRead sh@(SH a sendUpdate) f = do
   sendUpdate
   return b
 
--- | Modifies a Subscription associated with a SubscriptionHandle
+-- | Modifies a 'Subscription' associated with a 'SubscriptionHandle'
 modify :: SubscriptionHandle -> (Subscription -> Subscription) -> IO ()
 modify sh f = modifyAndRead sh (\a -> (f a, ()))
 

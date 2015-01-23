@@ -1,3 +1,7 @@
+{- |
+Module      : Glutton.Gui.Css
+Description : Cascading Style Sheets for the GUI
+-}
 {-# LANGUAGE OverloadedStrings #-}
 module Glutton.Gui.Css (stylesheet) where
 

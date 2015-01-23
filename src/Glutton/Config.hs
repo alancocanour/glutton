@@ -1,3 +1,7 @@
+{- |
+Module      : Glutton.Config
+Description : configuration types, file loading, and parsing
+-}
 module Glutton.Config
        ( Config (..)
        , getConfig
@@ -9,13 +13,15 @@ import System.Environment (lookupEnv)
 import Data.Maybe (fromJust)
 import Control.Applicative ((<|>))
 
-data Config = Config { refreshTime :: Int
-                     , port :: Int
-                     , feeds :: [String]
+-- | User's Glutton configuration
+data Config = Config { refreshTime :: Int -- ^ time in seconds between retrieving feeds
+                     , port :: Int -- ^ the port to use for the GUI
+                     , feeds :: [String] -- ^ URLs of feeds the user wants to view
                      } deriving (Show, Read)
 
 --TODO use a real configuration file format that doesn't require knowledge of Haskell
-                                
+
+-- | Reads the user's configuration file of the disk or throws an error
 getConfig :: IO Config
 getConfig = do home <- gluttonHome
                configFile <- readFile $ home </> "glutton.conf"

@@ -1,3 +1,7 @@
+{- |
+Module      : Glutton.Gui
+Description : threepeeny-gui graphical user interface
+-}
 module Glutton.Gui
        ( createGui ) where
 
@@ -11,22 +15,27 @@ import Glutton.Gui.Css (stylesheet)
 import Glutton.Subscription as S
 import Glutton.Subscription.Updater
 
+-- | Initializes the Threepenny Graphical User Interface and returns
+-- functions to start and update it
 createGui
   :: IO ( Int -> Updater -> IO ()
-        , [SubscriptionHandle] -> IO ()) -- ^ A function to start the GUI given the port to run on and an Updater and a function to update the GUI when the subscriptions change
+        , [SubscriptionHandle] -> IO ()) -- ^ A function to start the GUI given the port to run on and an 'Updater' and a function to update the GUI when the subscriptions change
 createGui = do
   (unreadCountE, trigger) <- newEvent
   unreadCountB <- stepper [] unreadCountE
   return (\p u -> UI.startGUI defaultConfig { tpPort = Just p, tpStatic = Nothing } $ setup unreadCountB u
          ,trigger <=< mapM unreadCount)
 
+-- | A feed title, number of unread items, and 'SubscriptionHandle'
 type UnreadCount = (String,Int,SubscriptionHandle)
-  
+
+-- | Convert a 'SubscriptionHandle' into an 'UnreadCount'
 unreadCount :: SubscriptionHandle -> IO UnreadCount
 unreadCount h = do
   s <- S.get h
   return (feedTitle s, length $ filter (not . itemRead) $ feedItems s, h)
 
+-- | Constructs the GUI
 setup :: Behavior [UnreadCount] -> Updater -> Window -> UI ()
 setup ucs updater window = do --TODO use the Updater to enable adding/removing subscriptions from the GUI
   activeFeed <- div # set id_ "activeFeed"
@@ -40,6 +49,7 @@ setup ucs updater window = do --TODO use the Updater to enable adding/removing s
   _ <- getBody window #+ map element [sidebar, activeFeed]
   return ()
 
+-- | Like Threepenny's 'sink' function but lets you use a Behavior [UI Element]
 sinkChildren :: Behavior [UI Element] -> UI Element -> UI ()
 sinkChildren b e = do
   _ <- (e #+) =<< currentValue b
