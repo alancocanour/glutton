@@ -99,6 +99,7 @@ mkItem sh i = do
   link <- a # set (attr "target") "_blank"
             # set (attr "href") (fromMaybe "" $ itemLink i)
             # set text (fromMaybe "" $ itemTitle i)
+            #. if itemRead i then "read" else "unread"
   div #. "feedItem"
     #+ [ element markRead
        , element link ]

@@ -56,6 +56,7 @@ stylesheet = unpack $ render $ do
     clear both
     paddingPx 0 0 2 2
   ".clickable" ? clickable
+  ".unread" ? fontWeight bold
   where marginPx l r t b = margin (px l) (px r) (px t) (px b)
         paddingPx l r t b = padding (px l) (px r) (px t) (px b)
         clickable = "cursor" -: "pointer"
