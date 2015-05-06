@@ -35,9 +35,15 @@ unreadCount h = do
   s <- S.get h
   return (feedTitle s, length $ filter (not . itemRead) $ feedItems s, h)
 
+-- | Get the count of all unread items
+sumUnreadCount :: [UnreadCount] -> Int
+sumUnreadCount = sum . map (\(_,c,_)->c)
+
 -- | Constructs the GUI
 setup :: Behavior [UnreadCount] -> Updater -> Window -> UI ()
 setup ucs updater window = do --TODO use the Updater to enable adding/removing subscriptions from the GUI
+  _ <- sink title (fmap ((++ " - Glutton") . show . sumUnreadCount) ucs) (return window)
+
   activeFeed <- div # set id_ "activeFeed"
 
   let sidebarContents = fmap (map $ mkSidebar activeFeed) ucs
