@@ -23,7 +23,7 @@ createGui
 createGui = do
   (unreadCountE, trigger) <- newEvent
   unreadCountB <- stepper [] unreadCountE
-  return (\p u -> UI.startGUI defaultConfig { tpPort = Just p, tpStatic = Nothing } $ setup unreadCountB u
+  return (\p u -> UI.startGUI defaultConfig { jsPort = Just p, jsStatic = Nothing } $ setup unreadCountB u
          ,trigger <=< mapM unreadCount)
 
 -- | A feed title, number of unread items, and 'SubscriptionHandle'
