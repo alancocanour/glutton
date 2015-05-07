@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 
 executable glutton
   main-is:             Main.hs
-  build-depends:       base >=4.6 && <4.8
+  build-depends:       base == 4.8.*
                      , glutton
   default-language:    Haskell2010
 
@@ -27,18 +27,18 @@ library
                      , Glutton.Config
                      , Glutton.Gui
                      , Glutton.Gui.Css
-  build-depends:       base >=4.6 && <4.8
+  build-depends:       base == 4.8.*
                      , feed == 0.3.*
                      , HTTP == 4000.2.*
-                     , mtl == 2.1.*
+                     , mtl == 2.*
                      , acid-state == 0.12.*
                      , safecopy == 0.8.*
                      , containers == 0.5.*
-                     , filepath == 1.3.*
+                     , filepath == 1.*
                      , stm == 2.4.*
                      , threepenny-gui == 0.6.*
-                     , clay == 0.8.*
-                     , text == 1.1.*
+                     , clay == 0.*
+                     , text == 1.*
                      , directory == 1.2.*
   hs-source-dirs:      src
   default-language:    Haskell2010

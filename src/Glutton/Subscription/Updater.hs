@@ -13,8 +13,7 @@ module Glutton.Subscription.Updater
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
-import Data.Functor
-  
+
 import Glutton.Subscription
 import Glutton.ItemPredicate
 
