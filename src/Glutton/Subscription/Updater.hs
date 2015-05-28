@@ -14,6 +14,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
 
+import qualified Glutton.Config as C
 import Glutton.Subscription
 import Glutton.ItemPredicate
 
@@ -24,24 +25,26 @@ data Updater = Updater
                { feeds :: TVar [(String, SubscriptionHandle)]
                , sendUpdate :: [SubscriptionHandle] -> IO ()
                , thread :: ThreadId
+               , config :: C.ConfigHandle
                }
 
--- | Starts a background thread that updates the given feeds at the
--- given interval and calls a function when feeds are updated that can
--- be used to update the user interface
-startUpdater
-  :: Int -- ^ time between updates in seconds
-  -> [String] -- ^ Feed URLs to update
+-- | Starts a background thread that updates feeds given in the
+-- configuration at the interval given in the configuration and calls
+-- a function when feeds are updated that can be used to update the
+-- user interface
+startUpdater ::
+  C.ConfigHandle -- ^ A handle to access and modify user configuration
   -> ([SubscriptionHandle] -> IO ()) -- ^ An IO action to call when a SubscriptionHandle changes
   -> IO Updater
-startUpdater i fs updateFunction = do
+startUpdater configH updateFunction = do
+  cfg <- C.readConfig configH
   handlesT <- newTVarIO []
-  handles <- forM fs $ \f ->
+  handles <- forM (C.feeds cfg) $ \f ->
     do h <- open f (updateFunction =<< return . map snd =<< readTVarIO handlesT)
        return (f, h)
   atomically $ writeTVar handlesT handles
-  tid <- forkIO $ updateThread i handlesT updateFunction
-  return $ Updater handlesT updateFunction tid
+  tid <- forkIO $ updateThread (C.refreshTime cfg) handlesT updateFunction
+  return $ Updater handlesT updateFunction tid configH
 
 -- | The background thread that does all the work
 updateThread :: Int -> TVar [(String, SubscriptionHandle)] -> ([SubscriptionHandle] -> IO ()) -> IO ()
@@ -70,6 +73,7 @@ addSubscription :: Updater -> String -> IO ()
 addSubscription u f = do
   handle <- open f (callSendUpdate u)
   atomically $ modifyTVar' (feeds u) ((f, handle) :)
+  _ <- C.modifyConfig (config u) (\c -> c { C.feeds = f : C.feeds c})
   callSendUpdate u
 
 -- | Remove a Subscription from the list of Subscriptions to be
@@ -81,4 +85,5 @@ removeSubscription u f = do
     modifyTVar' (feeds u) $ filter $ (/= f) . fst
     return handle
   close handle
+  _ <- C.modifyConfig (config u) (\c -> c { C.feeds = filter (/= f) (C.feeds c)})
   callSendUpdate u

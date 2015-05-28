@@ -4,7 +4,11 @@ Description : configuration types, file loading, and parsing
 -}
 module Glutton.Config
        ( Config (..)
-       , getConfig
+       , ConfigHandle
+       , newConfig
+       , readConfig
+       , loadConfig
+       , modifyConfig
        , gluttonHome
        ) where
 
@@ -12,6 +16,10 @@ import System.FilePath ((</>))
 import System.Environment (lookupEnv)
 import Data.Maybe (fromJust)
 import Control.Applicative ((<|>))
+import Control.Concurrent.STM
+import Control.Exception
+
+data ConfigHandle = CH FilePath (TVar Config)
 
 -- | User's Glutton configuration
 data Config = Config { refreshTime :: Int -- ^ time in seconds between retrieving feeds
@@ -19,17 +27,37 @@ data Config = Config { refreshTime :: Int -- ^ time in seconds between retrievin
                      , feeds :: [String] -- ^ URLs of feeds the user wants to view
                      } deriving (Show, Read)
 
---TODO use a real configuration file format that doesn't require knowledge of Haskell
+defaultConfig :: Config
+defaultConfig = Config 1200 9999 []
 
--- | Reads the user's configuration file of the disk or throws an error
-getConfig :: IO Config
-getConfig = do home <- gluttonHome
-               configFile <- readFile $ home </> "glutton.conf"
-               return $ read configFile
+newConfig :: IO ConfigHandle
+newConfig = do
+  f <- gluttonConfigFile
+  t <- newTVarIO defaultConfig
+  return $ CH f t
+
+loadConfig :: IO (Either IOException ConfigHandle)
+loadConfig = do
+  f <- gluttonConfigFile
+  try $ do
+    contents <- read <$> readFile f
+    (CH f) <$> newTVarIO contents
+
+readConfig :: ConfigHandle -> IO Config
+readConfig (CH _ t) = readTVarIO t
+
+modifyConfig :: ConfigHandle -> (Config -> Config) -> IO (Either IOException ())
+modifyConfig (CH fp t) f = do
+  c <- atomically $ modifyTVar' t f >> readTVar t
+  try $ writeFile fp (show c)
 
 -- | The FilePath where subscriptions are stored
 gluttonHome :: IO FilePath
-gluttonHome = do gluttonHomeEnv <- lookupEnv "GLUTTONHOME"
-                 homeEnv <- lookupEnv "HOME"
-                 let home = fromJust $ gluttonHomeEnv <|> homeEnv <|> Just "."
-                 return $ home </> ".glutton"
+gluttonHome = do
+  gluttonHomeEnv <- lookupEnv "GLUTTONHOME"
+  homeEnv <- lookupEnv "HOME"
+  let home = fromJust $ gluttonHomeEnv <|> homeEnv <|> Just "."
+  return $ home </> ".glutton"
+
+gluttonConfigFile :: IO FilePath
+gluttonConfigFile = (</> "glutton.conf") <$> gluttonHome
